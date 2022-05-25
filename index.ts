@@ -122,12 +122,29 @@ const delegateTo = async (wallet, poolId, protocolParameters, accountInformation
 
         const transaction = await buildTx(changeAddress, utxos, outputs, protocolParameters, certificates)
 
-        return await wallet.signAndSubmit(transaction)
+        return await signAndSubmit(wallet, transaction)
     } catch (error) {
         throw error
     }
 }
 
+const signAndSubmit = async (wallet, transaction) => {
+    if ('Typhon' === wallet.type) {
+        throw 'No implementation from the extension'
+    }
+
+    try {
+        const witnesses = await wallet.cardano.signTx(hexToBytes(transaction.to_bytes()).toString('hex'))
+        const signedTx = CSL.Transaction.new(
+            transaction.body(),
+            CSL.TransactionWitnessSet.from_bytes(hexToBytes(witnesses))
+        )
+
+        return await wallet.cardano.submitTx(hexToBytes(signedTx.to_bytes()).toString('hex'))
+    } catch (error) {
+        //throw error.info
+    }
+}
 
 class Extension {
     type: any
@@ -141,23 +158,7 @@ class Extension {
 
 
 
-    signAndSubmit = async (transaction) => {
-        if ('Typhon' === this.type) {
-            throw 'No implementation from the extension'
-        }
 
-        try {
-            const witnesses = await this.cardano.signTx(hexToBytes(transaction.to_bytes()).toString('hex'))
-            const signedTx = CSL.Transaction.new(
-                transaction.body(),
-                CSL.TransactionWitnessSet.from_bytes(hexToBytes(witnesses))
-            )
-
-            return await this.cardano.submitTx(hexToBytes(signedTx.to_bytes()).toString('hex'))
-        } catch (error) {
-            //throw error.info
-        }
-    }
 
 
 
