@@ -1,9 +1,30 @@
-import { NETWORK } from './config'
 import { hexToBech32, hexToBytes } from './utils'
 import * as CSL from '@emurgo/cardano-serialization-lib-browser'
 import { buildTx, prepareTx } from './wallet'
 
+export const NETWORK = {
+    0: 'testnet',
+    1: 'mainnet',
+}
+
+export const TX = {
+    too_big: 'Transaction too big',
+    not_possible: 'Transaction not possible (maybe insufficient balance)',
+    invalid_hereafter: 3600 * 2, //2h from current slot
+}
+
+export const supportedWallets = Object.freeze([
+    'Nami',
+    'Eternl', // ccvault
+    'Yoroi',
+    'Flint',
+    'Typhon',
+    'GeroWallet',
+])
+
 class Extension {
+    type: any
+    cardano: any
     constructor(type, cardano) {
         this.type = type
         this.cardano = cardano
