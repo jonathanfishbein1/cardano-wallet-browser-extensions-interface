@@ -38,10 +38,10 @@ export const supportedWallets = [
 
 const getRewardAddress = async wallet => {
     if ('Typhon' === wallet.type) {
-        const response = await wallet.cardano.getRewardAddress()
+        const response = await wallet.getRewardAddress()
         return response.data
     }
-    const rewardAddress = await wallet.cardano.getRewardAddresses()
+    const rewardAddress = await wallet.getRewardAddresses()
     return hexToBech32(rewardAddress[0])
 }
 
@@ -55,10 +55,10 @@ const getStakeKeyHash = async wallet => {
 
 const getChangeAddress = async wallet => {
     if ('Typhon' === wallet.type) {
-        const response = await wallet.cardano.getAddress()
+        const response = await wallet.getAddress()
         return response.data
     }
-    const changeAddress = await wallet.cardano.getChangeAddress()
+    const changeAddress = await wallet.getChangeAddress()
     return hexToBech32(changeAddress)
 }
 
@@ -67,13 +67,13 @@ const getUtxos = async wallet => {
     if ('Typhon' === wallet.type) {
         return []
     }
-    const rawUtxos = await wallet.cardano.getUtxos()
+    const rawUtxos = await wallet.getUtxos()
     return rawUtxos.map((utxo) => CSL.TransactionUnspentOutput.from_bytes(hexToBytes(utxo)))
 }
 
 const delegateTo = async (wallet, poolId, protocolParameters, accountInformation) => {
     if ('Typhon' === wallet.type) {
-        const { status, data, error, reason } = await wallet.cardano.delegationTransaction({
+        const { status, data, error, reason } = await wallet.delegationTransaction({
             poolId,
         })
 
@@ -134,35 +134,18 @@ const signAndSubmit = async (wallet, transaction) => {
     }
 
     try {
-        const witnesses = await wallet.cardano.signTx(hexToBytes(transaction.to_bytes()).toString('hex'))
+        const witnesses = await wallet.signTx(hexToBytes(transaction.to_bytes()).toString('hex'))
         const signedTx = CSL.Transaction.new(
             transaction.body(),
             CSL.TransactionWitnessSet.from_bytes(hexToBytes(witnesses))
         )
 
-        return await wallet.cardano.submitTx(hexToBytes(signedTx.to_bytes()).toString('hex'))
+        return await wallet.submitTx(hexToBytes(signedTx.to_bytes()).toString('hex'))
     } catch (error) {
         //throw error.info
     }
 }
 
-class Extension {
-    type: any
-    cardano: any
-    constructor(type, cardano) {
-        this.type = type
-        this.cardano = cardano
-    }
-
-
-
-
-
-
-
-
-
-}
 
 const multiAssetCount = async (multiAsset) => {
     if (!multiAsset) return 0
@@ -304,11 +287,10 @@ const isSupported = type => supportedWallets.includes(type)
 
 const hasWallet = type => (isSupported(type)) && (window.cardano[type.toLowerCase()] !== undefined)
 
-const getWallet = async type => new Extension(type, await getWalletApi(type.toLowerCase()))
+const getWallet = async type => await getWalletApi(type.toLowerCase())
 
 export { CSL }
 export {
     hasWallet, getWallet, getRewardAddress,
     delegateTo
 }
-export default Extension
