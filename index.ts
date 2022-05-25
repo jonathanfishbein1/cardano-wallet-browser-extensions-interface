@@ -35,6 +35,81 @@ export const supportedWallets = [
     'GeroWallet',
 ]
 
+
+const getRewardAddress = async wallet => {
+    if ('Typhon' === wallet.type) {
+        const response = await wallet.cardano.getRewardAddress()
+        return response.data
+    }
+    const rewardAddress = await wallet.cardano.getRewardAddresses()
+    return hexToBech32(rewardAddress[0])
+}
+
+const getStakeKeyHash = async wallet => {
+    const rewardAddress = await getRewardAddress(wallet)
+
+    return CSL.RewardAddress.from_address(
+        CSL.Address.from_bech32(rewardAddress)
+    ).payment_cred().to_keyhash().to_bytes()
+}
+
+const delegateTo = async (wallet, poolId, protocolParameters, accountInformation) => {
+    if ('Typhon' === wallet.type) {
+        const { status, data, error, reason } = await wallet.cardano.delegationTransaction({
+            poolId,
+        })
+
+        if (status) {
+            return data.transactionId
+        }
+
+        throw error ?? reason
+    }
+
+    try {
+        const changeAddress = await wallet.getChangeAddress()
+        const utxos = await wallet.getUtxos()
+        const outputs = await prepareTx(protocolParameters.keyDeposit, changeAddress)
+        const stakeKeyHash = await getStakeKeyHash(wallet)
+        const certificates = CSL.Certificates.new()
+
+        if (!accountInformation.active) {
+            certificates.add(
+                CSL.Certificate.new_stake_registration(
+                    CSL.StakeRegistration.new(
+                        CSL.StakeCredential.from_keyhash(
+                            CSL.Ed25519KeyHash.from_bytes(
+                                hexToBytes(stakeKeyHash)
+                            )
+                        )
+                    )
+                )
+            )
+        }
+
+        certificates.add(
+            CSL.Certificate.new_stake_delegation(
+                CSL.StakeDelegation.new(
+                    CSL.StakeCredential.from_keyhash(
+                        CSL.Ed25519KeyHash.from_bytes(
+                            hexToBytes(stakeKeyHash)
+                        )
+                    ),
+                    CSL.Ed25519KeyHash.from_bytes(
+                        hexToBytes(poolId)
+                    )
+                )
+            )
+        )
+
+        const transaction = await buildTx(changeAddress, utxos, outputs, protocolParameters, certificates)
+
+        return await wallet.signAndSubmit(transaction)
+    } catch (error) {
+        throw error
+    }
+}
+
 class Extension {
     type: any
     cardano: any
@@ -81,17 +156,6 @@ class Extension {
         return hexToBech32(changeAddress)
     }
 
-    getRewardAddress = async () => {
-        if ('Typhon' === this.type) {
-            const response = await this.cardano.getRewardAddress()
-
-            return response.data
-        }
-
-        const rewardAddress = await this.cardano.getRewardAddresses()
-
-        return hexToBech32(rewardAddress[0])
-    }
 
     getUtxos = async () => {
         if ('Typhon' === this.type) {
@@ -103,13 +167,6 @@ class Extension {
         return rawUtxos.map((utxo) => CSL.TransactionUnspentOutput.from_bytes(hexToBytes(utxo)))
     }
 
-    getStakeKeyHash = async () => {
-        const rewardAddress = await this.getRewardAddress()
-
-        return CSL.RewardAddress.from_address(
-            CSL.Address.from_bech32(rewardAddress)
-        ).payment_cred().to_keyhash().to_bytes()
-    }
 
     signAndSubmit = async (transaction) => {
         if ('Typhon' === this.type) {
@@ -130,70 +187,7 @@ class Extension {
     }
 
 
-    delegateTo = async (poolId, protocolParameters = null, accountInformation = null) => {
-        if ('Typhon' === this.type) {
-            const { status, data, error, reason } = await this.cardano.delegationTransaction({
-                poolId,
-            })
 
-            if (status) {
-                return data.transactionId
-            }
-
-            throw error ?? reason
-        }
-
-        if (!protocolParameters) {
-            throw 'Required protocol parameters'
-        }
-
-        if (!accountInformation) {
-            throw 'Required account information'
-        }
-
-        try {
-            const changeAddress = await this.getChangeAddress()
-            const utxos = await this.getUtxos()
-            const outputs = await prepareTx(protocolParameters.keyDeposit, changeAddress)
-            const stakeKeyHash = await this.getStakeKeyHash()
-            const certificates = CSL.Certificates.new()
-
-            if (!accountInformation.active) {
-                certificates.add(
-                    CSL.Certificate.new_stake_registration(
-                        CSL.StakeRegistration.new(
-                            CSL.StakeCredential.from_keyhash(
-                                CSL.Ed25519KeyHash.from_bytes(
-                                    hexToBytes(stakeKeyHash)
-                                )
-                            )
-                        )
-                    )
-                )
-            }
-
-            certificates.add(
-                CSL.Certificate.new_stake_delegation(
-                    CSL.StakeDelegation.new(
-                        CSL.StakeCredential.from_keyhash(
-                            CSL.Ed25519KeyHash.from_bytes(
-                                hexToBytes(stakeKeyHash)
-                            )
-                        ),
-                        CSL.Ed25519KeyHash.from_bytes(
-                            hexToBytes(poolId)
-                        )
-                    )
-                )
-            )
-
-            const transaction = await buildTx(changeAddress, utxos, outputs, protocolParameters, certificates)
-
-            return await this.signAndSubmit(transaction)
-        } catch (error) {
-            throw error
-        }
-    }
 }
 
 const multiAssetCount = async (multiAsset) => {
@@ -339,5 +333,8 @@ const hasWallet = type => (isSupported(type)) && (window.cardano[type.toLowerCas
 const getWallet = async type => new Extension(type, await getWalletApi(type.toLowerCase()))
 
 export { CSL }
-export { hasWallet, getWallet }
+export {
+    hasWallet, getWallet, getRewardAddress,
+    delegateTo
+}
 export default Extension
