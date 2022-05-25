@@ -53,6 +53,24 @@ const getStakeKeyHash = async wallet => {
     ).payment_cred().to_keyhash().to_bytes()
 }
 
+const getChangeAddress = async wallet => {
+    if ('Typhon' === wallet.type) {
+        const response = await wallet.cardano.getAddress()
+        return response.data
+    }
+    const changeAddress = await wallet.cardano.getChangeAddress()
+    return hexToBech32(changeAddress)
+}
+
+
+const getUtxos = async wallet => {
+    if ('Typhon' === wallet.type) {
+        return []
+    }
+    const rawUtxos = await wallet.cardano.getUtxos()
+    return rawUtxos.map((utxo) => CSL.TransactionUnspentOutput.from_bytes(hexToBytes(utxo)))
+}
+
 const delegateTo = async (wallet, poolId, protocolParameters, accountInformation) => {
     if ('Typhon' === wallet.type) {
         const { status, data, error, reason } = await wallet.cardano.delegationTransaction({
@@ -67,8 +85,8 @@ const delegateTo = async (wallet, poolId, protocolParameters, accountInformation
     }
 
     try {
-        const changeAddress = await wallet.getChangeAddress()
-        const utxos = await wallet.getUtxos()
+        const changeAddress = await getChangeAddress(wallet)
+        const utxos = await getUtxos(wallet)
         const outputs = await prepareTx(protocolParameters.keyDeposit, changeAddress)
         const stakeKeyHash = await getStakeKeyHash(wallet)
         const certificates = CSL.Certificates.new()
@@ -110,6 +128,7 @@ const delegateTo = async (wallet, poolId, protocolParameters, accountInformation
     }
 }
 
+
 class Extension {
     type: any
     cardano: any
@@ -118,54 +137,8 @@ class Extension {
         this.cardano = cardano
     }
 
-    getNetwork = async () => {
-        if ('Yoroi' === this.type) {
-            return NETWORK[1]
-        }
-
-        let id = await this.cardano.getNetworkId()
-
-        if ('Typhon' === this.type) {
-            id = id.data
-        }
-
-        return NETWORK[id]
-    }
-
-    getBalance = async () => {
-        if ('Typhon' === this.type) {
-            const response = await this.cardano.getBalance()
-
-            return response.data.ada
-        }
-
-        const balance = await this.cardano.getBalance()
-
-        return CSL.Value.from_bytes(hexToBytes(balance)).coin().to_str()
-    }
-
-    getChangeAddress = async () => {
-        if ('Typhon' === this.type) {
-            const response = await this.cardano.getAddress()
-
-            return response.data
-        }
-
-        const changeAddress = await this.cardano.getChangeAddress()
-
-        return hexToBech32(changeAddress)
-    }
 
 
-    getUtxos = async () => {
-        if ('Typhon' === this.type) {
-            return []
-        }
-
-        const rawUtxos = await this.cardano.getUtxos()
-
-        return rawUtxos.map((utxo) => CSL.TransactionUnspentOutput.from_bytes(hexToBytes(utxo)))
-    }
 
 
     signAndSubmit = async (transaction) => {
