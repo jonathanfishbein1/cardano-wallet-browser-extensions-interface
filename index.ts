@@ -332,53 +332,42 @@ const getWalletApi = async (namespace) => {
     return response
 }
 
-class Extensions {
-    static supported = supportedWallets
-
-    static isSupported(type) {
-        if ('ccvault' === type) {
-            type = 'Eternl'
-        }
-
-        return supportedWallets.includes(type)
+const isSupported = (type) => {
+    if ('ccvault' === type) {
+        type = 'Eternl'
     }
 
-    static hasWallet(type) {
-        if ('ccvault' === type) {
-            type = 'Eternl'
-        }
+    return supportedWallets.includes(type)
+}
 
-        if (!this.isSupported(type)) {
-            return false;
-        }
-
-        return !!window.cardano?.[type.toLowerCase()]
+const hasWallet = (type) => {
+    if ('ccvault' === type) {
+        type = 'Eternl'
     }
 
-    static async getWallet(type) {
-        if (!this.isSupported(type)) {
-            throw `Not supported wallet "${type}"`
-        }
-
-        if (!this.hasWallet(type)) {
-            throw `Not available wallet "${type}"`
-        }
-
-        const namespace = type.toLowerCase()
-        const object = `${namespace}Object`
-
-        if (undefined === this[object]) {
-            try {
-                this[object] = new Extension(type, await getWalletApi(namespace))
-            } catch (error) {
-                // throw typeof error === 'string' ? error : (error.info || error.message || 'user abort connection')
-            }
-        }
-
-        return Object.freeze(this[object])
+    if (!isSupported(type)) {
+        return false;
     }
+
+    return !!window.cardano?.[type.toLowerCase()]
+}
+
+const getWallet = async (type) => {
+    if (!isSupported(type)) {
+        throw `Not supported wallet "${type}"`
+    }
+
+    if (!hasWallet(type)) {
+        throw `Not available wallet "${type}"`
+    }
+
+    const namespace = type.toLowerCase()
+    const wallet = new Extension(type, await getWalletApi(namespace))
+
+
+    return wallet
 }
 
 export { CSL }
-export { Extensions }
+export { hasWallet, getWallet }
 export default Extension

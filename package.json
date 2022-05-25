@@ -1,5 +1,5 @@
 {
-  "name": "@pbwebdev/cardano-wallet-browser-extensions-interface",
+  "name": "@jonathanfishbein1/cardano-wallet-browser-extensions-interface",
   "version": "0.4.0",
   "description": "Helper library to interact with Cardano Wallets",
   "keywords": [
@@ -7,16 +7,7 @@
     "dApp"
   ],
   "license": "MIT",
-  "author": {
-    "name": "Gene Alyson Fortunado Torcende",
-    "email": "mail@pbwebdev.com",
-    "homepage": "https://pbwebdev.com"
-  },
-  "main": "index.js",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/pbwebdev/cardano-wallet-browser-extensions-interface.git"
-  },
+  "main": "index.ts",
   "dependencies": {
     "typescript": "^4.5.2",
     "@emurgo/cardano-serialization-lib-browser": "9.1.2",
