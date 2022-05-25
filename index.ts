@@ -129,37 +129,6 @@ class Extension {
         }
     }
 
-    payTo = async (address, amount, protocolParameters = null) => {
-        if ('Typhon' === this.type) {
-            const { status, data, error, reason } = await this.cardano.paymentTransaction({
-                outputs: [{
-                    address,
-                    amount,
-                }],
-            })
-
-            if (status) {
-                return data.transactionId
-            }
-
-            throw error ?? reason
-        }
-
-        if (!protocolParameters) {
-            throw 'Required protocol parameters'
-        }
-
-        try {
-            const changeAddress = await this.getChangeAddress()
-            const utxos = await this.getUtxos()
-            const outputs = await prepareTx(amount, address)
-            const transaction = await buildTx(changeAddress, utxos, outputs, protocolParameters)
-
-            return await this.signAndSubmit(transaction)
-        } catch (error) {
-            throw error
-        }
-    }
 
     delegateTo = async (poolId, protocolParameters = null, accountInformation = null) => {
         if ('Typhon' === this.type) {
