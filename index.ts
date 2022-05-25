@@ -332,41 +332,11 @@ const getWalletApi = async (namespace) => {
     return response
 }
 
-const isSupported = (type) => {
-    if ('ccvault' === type) {
-        type = 'Eternl'
-    }
+const isSupported = type => supportedWallets.includes(type)
 
-    return supportedWallets.includes(type)
-}
+const hasWallet = type => (isSupported(type)) && (window.cardano[type.toLowerCase()] !== undefined)
 
-const hasWallet = (type) => {
-    if ('ccvault' === type) {
-        type = 'Eternl'
-    }
-
-    if (!isSupported(type)) {
-        return false;
-    }
-
-    return !!window.cardano?.[type.toLowerCase()]
-}
-
-const getWallet = async (type) => {
-    if (!isSupported(type)) {
-        throw `Not supported wallet "${type}"`
-    }
-
-    if (!hasWallet(type)) {
-        throw `Not available wallet "${type}"`
-    }
-
-    const namespace = type.toLowerCase()
-    const wallet = new Extension(type, await getWalletApi(namespace))
-
-
-    return wallet
-}
+const getWallet = async type => new Extension(type, await getWalletApi(type.toLowerCase()))
 
 export { CSL }
 export { hasWallet, getWallet }
