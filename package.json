@@ -18,8 +18,11 @@
     "url": "https://github.com/pbwebdev/cardano-wallet-browser-extensions-interface.git"
   },
   "dependencies": {
-    "@babel/runtime": "^7.17.9",
+    "typescript": "^4.5.2",
     "@emurgo/cardano-serialization-lib-browser": "9.1.2",
     "buffer": "^6.0.3"
+  },
+  "scripts": {
+    "build": "/home/jonathan/Documents/cardano-wallet-browser-extensions-interface/node_modules/.bin/tsc"
   }
 }

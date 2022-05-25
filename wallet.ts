@@ -1,4 +1,4 @@
-import { TX } from './config'
+import { TX } from './extension'
 import CoinSelection from './lib/coinSelection'
 import * as CSL from '@emurgo/cardano-serialization-lib-browser'
 

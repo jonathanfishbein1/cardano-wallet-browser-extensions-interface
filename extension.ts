@@ -13,14 +13,14 @@ export const TX = {
     invalid_hereafter: 3600 * 2, //2h from current slot
 }
 
-export const supportedWallets = Object.freeze([
+export const supportedWallets = [
     'Nami',
     'Eternl', // ccvault
     'Yoroi',
     'Flint',
     'Typhon',
     'GeroWallet',
-])
+]
 
 class Extension {
     type: any
@@ -112,7 +112,7 @@ class Extension {
 
             return await this.cardano.submitTx(hexToBytes(signedTx.to_bytes()).toString('hex'))
         } catch (error) {
-            throw error.info
+            //throw error.info
         }
     }
 

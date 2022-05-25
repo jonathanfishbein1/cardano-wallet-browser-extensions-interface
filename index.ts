@@ -1,7 +1,8 @@
-import { supportedWallets } from './config'
+import { supportedWallets } from './extension'
 import Extension from './extension'
 import * as CSL from '@emurgo/cardano-serialization-lib-browser'
 
+declare var window: any
 const getWalletApi = async (namespace) => {
     const response = await window.cardano[namespace].enable()
 
@@ -32,7 +33,7 @@ class Extensions {
             type = 'Eternl'
         }
 
-        if (! this.isSupported(type)) {
+        if (!this.isSupported(type)) {
             return false;
         }
 
@@ -40,11 +41,11 @@ class Extensions {
     }
 
     static async getWallet(type) {
-        if (! this.isSupported(type)) {
+        if (!this.isSupported(type)) {
             throw `Not supported wallet "${type}"`
         }
 
-        if (! this.hasWallet(type)) {
+        if (!this.hasWallet(type)) {
             throw `Not available wallet "${type}"`
         }
 
@@ -55,7 +56,7 @@ class Extensions {
             try {
                 this[object] = new Extension(type, await getWalletApi(namespace))
             } catch (error) {
-                throw typeof error === 'string' ? error : (error.info || error.message || 'user abort connection')
+                // throw typeof error === 'string' ? error : (error.info || error.message || 'user abort connection')
             }
         }
 
