@@ -3,17 +3,13 @@ import { Address } from '@emurgo/cardano-serialization-lib-browser'
 import { Buffer } from 'buffer'
 import CoinSelection from './lib/coinSelection'
 
-export const adaToLovelace = (value) => {
-    return (parseFloat(value || '1') * 1000000).toFixed()
-}
+export const adaToLovelace = value => (parseFloat(value || '1') * 1000000).toFixed()
 
-export const hexToBytes = (string) => {
-    return Buffer.from(string, 'hex')
-}
+export const hexToBytes = string => Buffer.from(string, 'hex')
 
-export const hexToBech32 = (address) => {
-    return Address.from_bytes(hexToBytes(address)).to_bech32()
-}
+
+export const hexToBech32 = address => Address.from_bytes(hexToBytes(address)).to_bech32()
+
 
 export const NETWORK = {
     0: 'testnet',
@@ -47,7 +43,6 @@ const getRewardAddress = async wallet => {
 
 const getStakeKeyHash = async wallet => {
     const rewardAddress = await getRewardAddress(wallet)
-
     return CSL.RewardAddress.from_address(
         CSL.Address.from_bech32(rewardAddress)
     ).payment_cred().to_keyhash().to_bytes()
