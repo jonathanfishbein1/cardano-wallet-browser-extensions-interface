@@ -31,7 +31,7 @@ const getStakeKeyHash = async wallet => {
     const rewardAddress = await getRewardAddress(wallet)
     return CSL.RewardAddress.from_address(
         CSL.Address.from_bech32(rewardAddress)
-    ).payment_cred().to_keyhash().to_bytes()
+    )?.payment_cred().to_keyhash()?.to_bytes()
 }
 
 const getChangeAddress = async wallet => {
@@ -127,7 +127,7 @@ export const prepareTx = async (lovelaceValue, paymentAddress) => {
     return outputs
 }
 
-export const buildTx = async (changeAddress, utxos, outputs, protocolParameters, certificates = null) => {
+export const buildTx = async (changeAddress, utxos, outputs, protocolParameters, certificates) => {
     CoinSelection.setProtocolParameters(
         protocolParameters.minUtxo,
         protocolParameters.minFeeA.toString(),
