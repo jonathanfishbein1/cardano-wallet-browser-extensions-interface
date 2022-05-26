@@ -35,21 +35,18 @@ const getStakeKeyHash = async wallet => {
 }
 
 const getChangeAddress = async wallet => {
-    if ('Typhon Wallet' === wallet.name) {
-        const response = await wallet.getAddress()
-        return response.data
-    }
-    const changeAddress = await wallet.getChangeAddress()
-    return hexToBech32(changeAddress)
+    return await ('Typhon Wallet' === wallet.name) ?
+        wallet.getAddress().then(response => response.data)
+        :
+        wallet.getChangeAddress().then(changeAddress => hexToBech32(changeAddress))
 }
 
 
 const getUtxos = async wallet => {
-    if ('Typhon Wallet' === wallet.name) {
-        return []
-    }
-    const rawUtxos = await wallet.getUtxos()
-    return rawUtxos.map(utxo => CSL.TransactionUnspentOutput.from_bytes(hexToBytes(utxo)))
+    return await ('Typhon Wallet' === wallet.name) ?
+        []
+        :
+        wallet.getUtxos().then(rawUtxos => rawUtxos.map(utxo => CSL.TransactionUnspentOutput.from_bytes(hexToBytes(utxo))))
 }
 
 const delegateTo = async (wallet, poolId, protocolParameters, accountInformation) => {
