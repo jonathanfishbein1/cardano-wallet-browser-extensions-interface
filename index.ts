@@ -156,10 +156,8 @@ export const buildTx = async (changeAddress, utxos, outputs, protocolParameters,
         )
     if (certificates)
         txBuilder.set_certs(certificates)
-    for (let i = 0; i < inputs.length; i++) {
-        const utxo = inputs[i]
-        txBuilder.add_input(utxo.output().address(), utxo.input(), utxo.output().amount())
-    }
+    inputs.map(utxo => txBuilder.add_input(utxo.output().address(), utxo.input(), utxo.output().amount()))
+
 
     txBuilder.add_output(outputs.get(0))
 
