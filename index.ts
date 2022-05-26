@@ -134,26 +134,6 @@ export const prepareTx = async (lovelaceValue, paymentAddress) => {
     return outputs
 }
 
-const makeSplit = (changeMultiAssets, policies, partialMultiAssets, protocolParameters) => {
-    policies.map(policy => {
-        const policyAssets = changeMultiAssets.get(policy)
-            , assetNames = policyAssets.keys()
-            , assets = CSL.Assets.new()
-        assetNames.map(policyAsset => {
-            const quantity = policyAssets.get(policyAsset)
-            assets.insert(policyAsset, quantity)
-            const checkMultiAssets = CSL.MultiAsset.from_bytes(partialMultiAssets.to_bytes())
-            checkMultiAssets.insert(policy, assets)
-            const checkValue = CSL.Value.new(CSL.BigNum.from_str('0'))
-            checkValue.set_multiasset(checkMultiAssets)
-            if (checkValue.to_bytes().length * 2 >= protocolParameters.maxValSize)
-                partialMultiAssets.insert(policy, assets)
-        })
-        partialMultiAssets.insert(policy, assets)
-    }
-    )
-}
-
 export const buildTx = async (changeAddress, utxos, outputs, protocolParameters, certificates = null) => {
     CoinSelection.setProtocolParameters(
         protocolParameters.minUtxo,
@@ -185,25 +165,35 @@ export const buildTx = async (changeAddress, utxos, outputs, protocolParameters,
     // check if change value is too big for single output
     if (changeMultiAssets && change.to_bytes().length * 2 > protocolParameters.maxValSize) {
         const partialChange = CSL.Value.new(CSL.BigNum.from_str('0'))
-
-        const partialMultiAssets = CSL.MultiAsset.new()
-        const policies = changeMultiAssets.keys()
-
-        makeSplit(changeMultiAssets, policies, partialMultiAssets, protocolParameters)
+            , partialMultiAssets = CSL.MultiAsset.new()
+            , policies = changeMultiAssets.keys()
+        policies.map(policy => {
+            const policyAssets = changeMultiAssets.get(policy)
+                , assetNames = policyAssets.keys()
+                , assets = CSL.Assets.new()
+            assetNames.map(policyAsset => {
+                const quantity = policyAssets.get(policyAsset)
+                assets.insert(policyAsset, quantity)
+                const checkMultiAssets = CSL.MultiAsset.from_bytes(partialMultiAssets.to_bytes())
+                checkMultiAssets.insert(policy, assets)
+                const checkValue = CSL.Value.new(CSL.BigNum.from_str('0'))
+                checkValue.set_multiasset(checkMultiAssets)
+                if (checkValue.to_bytes().length * 2 >= protocolParameters.maxValSize)
+                    partialMultiAssets.insert(policy, assets)
+            })
+            partialMultiAssets.insert(policy, assets)
+        }
+        )
         partialChange.set_multiasset(partialMultiAssets)
         const minAda = CSL.min_ada_required(partialChange, CSL.BigNum.from_str(protocolParameters.minUtxo))
         partialChange.set_coin(minAda)
 
         txBuilder.add_output(CSL.TransactionOutput.new(CSL.Address.from_bech32(changeAddress), partialChange))
     }
-
     txBuilder.add_change_if_needed(CSL.Address.from_bech32(changeAddress))
-
     const transaction = CSL.Transaction.new(txBuilder.build(), CSL.TransactionWitnessSet.new())
-
-    const size = transaction.to_bytes().length * 2
+        , size = transaction.to_bytes().length * 2
     if (size > protocolParameters.maxTxSize) throw TX.too_big
-
     return transaction
 }
 
