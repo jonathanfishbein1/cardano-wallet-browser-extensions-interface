@@ -123,22 +123,6 @@ const signTx = async (wallet, transaction) => {
 
 const submitTx = async (wallet, signedTransaction) => await wallet.submitTx(hexToBytes(signedTransaction.to_bytes()).toString('hex'))
 
-
-const multiAssetCount = async (multiAsset) => {
-    if (!multiAsset) return 0
-    let count = 0
-    const policies = multiAsset.keys()
-    for (let j = 0; j < multiAsset.len(); j++) {
-        const policy = policies.get(j)
-        const policyAssets = multiAsset.get(policy)
-        const assetNames = policyAssets.keys()
-        for (let k = 0; k < assetNames.len(); k++) {
-            count++
-        }
-    }
-    return count
-}
-
 export const prepareTx = async (lovelaceValue, paymentAddress) => {
     const outputs = CSL.TransactionOutputs.new()
 
@@ -153,7 +137,6 @@ export const prepareTx = async (lovelaceValue, paymentAddress) => {
 }
 
 export const buildTx = async (changeAddress, utxos, outputs, protocolParameters, certificates = null) => {
-    const totalAssets = await multiAssetCount(outputs.get(0).amount().multiasset())
     CoinSelection.setProtocolParameters(
         protocolParameters.minUtxo,
         protocolParameters.minFeeA.toString(),
@@ -164,7 +147,7 @@ export const buildTx = async (changeAddress, utxos, outputs, protocolParameters,
     let selection
 
     try {
-        selection = await CoinSelection.randomImprove(utxos, outputs, 20 + totalAssets)
+        selection = await CoinSelection.randomImprove(utxos, outputs, 20)
     } catch {
         throw TX.not_possible
     }
