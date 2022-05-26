@@ -141,33 +141,21 @@ export const buildTx = async (changeAddress, utxos, outputs, protocolParameters,
         protocolParameters.minFeeB.toString(),
         protocolParameters.maxTxSize.toString()
     )
-
-    let selection
-
-    try {
-        selection = await CoinSelection.randomImprove(utxos, outputs, 20)
-    } catch {
-        throw TX.not_possible
-    }
-
-    const inputs = selection.input
-
-    const txBuilder = CSL.TransactionBuilder.new(
-        CSL.LinearFee.new(
-            CSL.BigNum.from_str(protocolParameters.minFeeA.toString()),
-            CSL.BigNum.from_str(protocolParameters.minFeeB.toString())
-        ),
-        CSL.BigNum.from_str(protocolParameters.minUtxo),
-        CSL.BigNum.from_str(protocolParameters.poolDeposit),
-        CSL.BigNum.from_str(protocolParameters.keyDeposit),
-        protocolParameters.maxValSize,
-        protocolParameters.maxTxSize
-    )
-
-    if (certificates) {
+    const selection = await CoinSelection.randomImprove(utxos, outputs, 20)
+        , inputs = selection.input
+        , txBuilder = CSL.TransactionBuilder.new(
+            CSL.LinearFee.new(
+                CSL.BigNum.from_str(protocolParameters.minFeeA.toString()),
+                CSL.BigNum.from_str(protocolParameters.minFeeB.toString())
+            ),
+            CSL.BigNum.from_str(protocolParameters.minUtxo),
+            CSL.BigNum.from_str(protocolParameters.poolDeposit),
+            CSL.BigNum.from_str(protocolParameters.keyDeposit),
+            protocolParameters.maxValSize,
+            protocolParameters.maxTxSize
+        )
+    if (certificates)
         txBuilder.set_certs(certificates)
-    }
-
     for (let i = 0; i < inputs.length; i++) {
         const utxo = inputs[i]
         txBuilder.add_input(utxo.output().address(), utxo.input(), utxo.output().amount())
