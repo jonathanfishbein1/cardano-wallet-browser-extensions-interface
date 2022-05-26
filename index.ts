@@ -54,52 +54,47 @@ const delegateTo = async (wallet, poolId, protocolParameters, accountInformation
         const { status, data, error, reason } = await wallet.delegationTransaction({
             poolId,
         })
-
-        if (status) {
+        if (status)
             return data.transactionId
-        }
-
-        throw error ?? reason
     }
-
-    const changeAddress = await getChangeAddress(wallet)
-        , utxos = await getUtxos(wallet)
-        , outputs = await prepareTx(protocolParameters.keyDeposit, changeAddress)
-        , stakeKeyHash = await getStakeKeyHash(wallet)
-        , certificates = CSL.Certificates.new()
-
-    if (!accountInformation.active) {
-        certificates.add(
-            CSL.Certificate.new_stake_registration(
-                CSL.StakeRegistration.new(
-                    CSL.StakeCredential.from_keyhash(
-                        CSL.Ed25519KeyHash.from_bytes(
-                            hexToBytes(stakeKeyHash)
+    else {
+        const changeAddress = await getChangeAddress(wallet)
+            , utxos = await getUtxos(wallet)
+            , outputs = await prepareTx(protocolParameters.keyDeposit, changeAddress)
+            , stakeKeyHash = await getStakeKeyHash(wallet)
+            , certificates = CSL.Certificates.new()
+        if (!accountInformation.active) {
+            certificates.add(
+                CSL.Certificate.new_stake_registration(
+                    CSL.StakeRegistration.new(
+                        CSL.StakeCredential.from_keyhash(
+                            CSL.Ed25519KeyHash.from_bytes(
+                                hexToBytes(stakeKeyHash)
+                            )
                         )
                     )
                 )
             )
-        )
-    }
-
-    certificates.add(
-        CSL.Certificate.new_stake_delegation(
-            CSL.StakeDelegation.new(
-                CSL.StakeCredential.from_keyhash(
+        }
+        certificates.add(
+            CSL.Certificate.new_stake_delegation(
+                CSL.StakeDelegation.new(
+                    CSL.StakeCredential.from_keyhash(
+                        CSL.Ed25519KeyHash.from_bytes(
+                            hexToBytes(stakeKeyHash)
+                        )
+                    ),
                     CSL.Ed25519KeyHash.from_bytes(
-                        hexToBytes(stakeKeyHash)
+                        hexToBytes(poolId)
                     )
-                ),
-                CSL.Ed25519KeyHash.from_bytes(
-                    hexToBytes(poolId)
                 )
             )
         )
-    )
 
-    const transaction = await buildTx(changeAddress, utxos, outputs, protocolParameters, certificates)
-        , signedTransaction = await signTx(wallet, transaction)
-    return await submitTx(wallet, signedTransaction)
+        const transaction = await buildTx(changeAddress, utxos, outputs, protocolParameters, certificates)
+            , signedTransaction = await signTx(wallet, transaction)
+        return await submitTx(wallet, signedTransaction)
+    }
 }
 const signTx = async (wallet, transaction) => {
     return wallet.signTx(hexToBytes(transaction.to_bytes()).toString('hex')).then(witnesses => {
@@ -116,14 +111,12 @@ const submitTx = async (wallet, signedTransaction) => await wallet.submitTx(hexT
 
 export const prepareTx = async (lovelaceValue, paymentAddress) => {
     const outputs = CSL.TransactionOutputs.new()
-
     outputs.add(
         CSL.TransactionOutput.new(
             CSL.Address.from_bech32(paymentAddress),
             CSL.Value.new(CSL.BigNum.from_str(lovelaceValue))
         )
     )
-
     return outputs
 }
 
@@ -151,11 +144,8 @@ export const buildTx = async (changeAddress, utxos, outputs, protocolParameters,
         txBuilder.set_certs(certificates)
     inputs.map(utxo => txBuilder.add_input(utxo.output().address(), utxo.input(), utxo.output().amount()))
     txBuilder.add_output(outputs.get(0))
-
     const change = selection.change
         , changeMultiAssets = change.multiasset()
-
-    // check if change value is too big for single output
     if (changeMultiAssets && change.to_bytes().length * 2 > protocolParameters.maxValSize) {
         const partialChange = CSL.Value.new(CSL.BigNum.from_str('0'))
             , partialMultiAssets = CSL.MultiAsset.new()
@@ -180,7 +170,6 @@ export const buildTx = async (changeAddress, utxos, outputs, protocolParameters,
         partialChange.set_multiasset(partialMultiAssets)
         const minAda = CSL.min_ada_required(partialChange, CSL.BigNum.from_str(protocolParameters.minUtxo))
         partialChange.set_coin(minAda)
-
         txBuilder.add_output(CSL.TransactionOutput.new(CSL.Address.from_bech32(changeAddress), partialChange))
     }
     txBuilder.add_change_if_needed(CSL.Address.from_bech32(changeAddress))
@@ -191,19 +180,13 @@ export const buildTx = async (changeAddress, utxos, outputs, protocolParameters,
 }
 
 declare var window: any
-const getWalletApi = async (namespace) => {
-    const response = await window.cardano[namespace].enable()
-
-    if ('typhon' === namespace) {
-        if (false === response.status) {
-            throw response?.error ?? response.reason
-        }
-
-        return await window.cardano[namespace]
-    }
-
-    return response
+const getWalletApi = async namespace => {
+    return await ('typhon' === namespace) ?
+        window.cardano[namespace]
+        :
+        window.cardano[namespace].enable()
 }
+
 
 const isSupported = type => supportedWallets.includes(type)
 
