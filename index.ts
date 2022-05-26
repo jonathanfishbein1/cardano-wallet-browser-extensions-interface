@@ -6,13 +6,11 @@ import CoinSelection from './lib/coinSelection'
 const hexToBytes = string => Buffer.from(string, 'hex'),
     hexToBech32 = address => Address.from_bytes(hexToBytes(address)).to_bech32()
 
-export const TX = {
-    too_big: 'Transaction too big',
-    not_possible: 'Transaction not possible (maybe insufficient balance)',
-    invalid_hereafter: 3600 * 2, //2h from current slot
+const TX = {
+    too_big: 'Transaction too big'
 }
 
-export const supportedWallets = [
+const supportedWallets = [
     'Nami',
     'Eternl', // ccvault
     'Yoroi',
@@ -23,15 +21,10 @@ export const supportedWallets = [
 
 
 const getRewardAddress = async wallet => {
-    console.log('wallet.name', wallet.name)
-    if ('Typhon Wallet' === wallet.name) {
-        const response = await wallet.getRewardAddress()
-        return response.data
-    }
-    else {
-        const rewardAddress = await wallet.getRewardAddresses()
-        return hexToBech32(rewardAddress[0])
-    }
+    return await ('Typhon Wallet' === wallet.name) ?
+        wallet.getRewardAddress().then(response => response.data)
+        :
+        wallet.getRewardAddresses().then(rewardAddress => hexToBech32(rewardAddress[0]))
 }
 
 const getStakeKeyHash = async wallet => {
