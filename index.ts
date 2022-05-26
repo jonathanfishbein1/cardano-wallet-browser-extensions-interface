@@ -3,18 +3,8 @@ import { Address } from '@emurgo/cardano-serialization-lib-browser'
 import { Buffer } from 'buffer'
 import CoinSelection from './lib/coinSelection'
 
-export const adaToLovelace = value => (parseFloat(value || '1') * 1000000).toFixed()
-
-export const hexToBytes = string => Buffer.from(string, 'hex')
-
-
-export const hexToBech32 = address => Address.from_bytes(hexToBytes(address)).to_bech32()
-
-
-export const NETWORK = {
-    0: 'testnet',
-    1: 'mainnet',
-}
+const hexToBytes = string => Buffer.from(string, 'hex'),
+    hexToBech32 = address => Address.from_bytes(hexToBytes(address)).to_bech32()
 
 export const TX = {
     too_big: 'Transaction too big',
@@ -63,7 +53,7 @@ const getUtxos = async wallet => {
         return []
     }
     const rawUtxos = await wallet.getUtxos()
-    return rawUtxos.map((utxo) => CSL.TransactionUnspentOutput.from_bytes(hexToBytes(utxo)))
+    return rawUtxos.map(utxo => CSL.TransactionUnspentOutput.from_bytes(hexToBytes(utxo)))
 }
 
 const delegateTo = async (wallet, poolId, protocolParameters, accountInformation) => {
@@ -81,10 +71,10 @@ const delegateTo = async (wallet, poolId, protocolParameters, accountInformation
 
     try {
         const changeAddress = await getChangeAddress(wallet)
-        const utxos = await getUtxos(wallet)
-        const outputs = await prepareTx(protocolParameters.keyDeposit, changeAddress)
-        const stakeKeyHash = await getStakeKeyHash(wallet)
-        const certificates = CSL.Certificates.new()
+            , utxos = await getUtxos(wallet)
+            , outputs = await prepareTx(protocolParameters.keyDeposit, changeAddress)
+            , stakeKeyHash = await getStakeKeyHash(wallet)
+            , certificates = CSL.Certificates.new()
 
         if (!accountInformation.active) {
             certificates.add(
@@ -116,30 +106,22 @@ const delegateTo = async (wallet, poolId, protocolParameters, accountInformation
         )
 
         const transaction = await buildTx(changeAddress, utxos, outputs, protocolParameters, certificates)
-
-        return await signAndSubmit(wallet, transaction)
+            , signedTransaction = signTx(wallet, transaction)
+        return await submitTx(wallet, signedTransaction)
     } catch (error) {
         throw error
     }
 }
-
-const signAndSubmit = async (wallet, transaction) => {
-    if ('Typhon' === wallet.type) {
-        throw 'No implementation from the extension'
-    }
-
-    try {
-        const witnesses = await wallet.signTx(hexToBytes(transaction.to_bytes()).toString('hex'))
-        const signedTx = CSL.Transaction.new(
+const signTx = async (wallet, transaction) => {
+    await wallet.signTx(hexToBytes(transaction.to_bytes()).toString('hex')).then(witnesses =>
+        CSL.Transaction.new(
             transaction.body(),
             CSL.TransactionWitnessSet.from_bytes(hexToBytes(witnesses))
         )
-
-        return await wallet.submitTx(hexToBytes(signedTx.to_bytes()).toString('hex'))
-    } catch (error) {
-        //throw error.info
-    }
+    )
 }
+
+const submitTx = async (wallet, signedTransaction) => await wallet.submitTx(hexToBytes(signedTransaction.to_bytes()).toString('hex'))
 
 
 const multiAssetCount = async (multiAsset) => {
@@ -252,7 +234,6 @@ export const buildTx = async (changeAddress, utxos, outputs, protocolParameters,
         txBuilder.add_output(CSL.TransactionOutput.new(CSL.Address.from_bech32(changeAddress), partialChange))
     }
 
-    txBuilder.set_ttl(protocolParameters.slot + TX.invalid_hereafter)
     txBuilder.add_change_if_needed(CSL.Address.from_bech32(changeAddress))
 
     const transaction = CSL.Transaction.new(txBuilder.build(), CSL.TransactionWitnessSet.new())
