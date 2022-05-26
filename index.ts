@@ -69,48 +69,44 @@ const delegateTo = async (wallet, poolId, protocolParameters, accountInformation
         throw error ?? reason
     }
 
-    try {
-        const changeAddress = await getChangeAddress(wallet)
-            , utxos = await getUtxos(wallet)
-            , outputs = await prepareTx(protocolParameters.keyDeposit, changeAddress)
-            , stakeKeyHash = await getStakeKeyHash(wallet)
-            , certificates = CSL.Certificates.new()
+    const changeAddress = await getChangeAddress(wallet)
+        , utxos = await getUtxos(wallet)
+        , outputs = await prepareTx(protocolParameters.keyDeposit, changeAddress)
+        , stakeKeyHash = await getStakeKeyHash(wallet)
+        , certificates = CSL.Certificates.new()
 
-        if (!accountInformation.active) {
-            certificates.add(
-                CSL.Certificate.new_stake_registration(
-                    CSL.StakeRegistration.new(
-                        CSL.StakeCredential.from_keyhash(
-                            CSL.Ed25519KeyHash.from_bytes(
-                                hexToBytes(stakeKeyHash)
-                            )
-                        )
-                    )
-                )
-            )
-        }
-
+    if (!accountInformation.active) {
         certificates.add(
-            CSL.Certificate.new_stake_delegation(
-                CSL.StakeDelegation.new(
+            CSL.Certificate.new_stake_registration(
+                CSL.StakeRegistration.new(
                     CSL.StakeCredential.from_keyhash(
                         CSL.Ed25519KeyHash.from_bytes(
                             hexToBytes(stakeKeyHash)
                         )
-                    ),
-                    CSL.Ed25519KeyHash.from_bytes(
-                        hexToBytes(poolId)
                     )
                 )
             )
         )
-
-        const transaction = await buildTx(changeAddress, utxos, outputs, protocolParameters, certificates)
-            , signedTransaction = await signTx(wallet, transaction)
-        return await submitTx(wallet, signedTransaction)
-    } catch (error) {
-        throw error
     }
+
+    certificates.add(
+        CSL.Certificate.new_stake_delegation(
+            CSL.StakeDelegation.new(
+                CSL.StakeCredential.from_keyhash(
+                    CSL.Ed25519KeyHash.from_bytes(
+                        hexToBytes(stakeKeyHash)
+                    )
+                ),
+                CSL.Ed25519KeyHash.from_bytes(
+                    hexToBytes(poolId)
+                )
+            )
+        )
+    )
+
+    const transaction = await buildTx(changeAddress, utxos, outputs, protocolParameters, certificates)
+        , signedTransaction = await signTx(wallet, transaction)
+    return await submitTx(wallet, signedTransaction)
 }
 const signTx = async (wallet, transaction) => {
     return wallet.signTx(hexToBytes(transaction.to_bytes()).toString('hex')).then(witnesses => {
