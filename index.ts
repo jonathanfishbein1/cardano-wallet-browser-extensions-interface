@@ -246,7 +246,7 @@ const getWalletApi = async (namespace) => {
 
 const isSupported = type => supportedWallets.includes(type)
 
-const hasWallet = type => (isSupported(type)) && (window.cardano[type.toLowerCase()] !== undefined)
+const hasWallet = type => isSupported(type) && window.cardano[type.toLowerCase()] !== undefined
 
 const getWallet = async type => await getWalletApi(type.toLowerCase())
 
