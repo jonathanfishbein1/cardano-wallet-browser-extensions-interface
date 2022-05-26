@@ -106,20 +106,22 @@ const delegateTo = async (wallet, poolId, protocolParameters, accountInformation
         )
 
         const transaction = await buildTx(changeAddress, utxos, outputs, protocolParameters, certificates)
-            , signedTransaction = signTx(wallet, transaction)
+            , signedTransaction = await signTx(wallet, transaction)
         return await submitTx(wallet, signedTransaction)
     } catch (error) {
         throw error
     }
 }
 const signTx = async (wallet, transaction) => {
-    await wallet.signTx(hexToBytes(transaction.to_bytes()).toString('hex')).then(witnesses =>
-        CSL.Transaction.new(
+    return wallet.signTx(hexToBytes(transaction.to_bytes()).toString('hex')).then(witnesses => {
+        return CSL.Transaction.new(
             transaction.body(),
             CSL.TransactionWitnessSet.from_bytes(hexToBytes(witnesses))
         )
+    }
     )
 }
+
 
 const submitTx = async (wallet, signedTransaction) => await wallet.submitTx(hexToBytes(signedTransaction.to_bytes()).toString('hex'))
 
