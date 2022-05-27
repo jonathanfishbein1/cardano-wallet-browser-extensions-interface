@@ -54,8 +54,7 @@ const delegateTo = async (wallet, poolId, protocolParameters, accountInformation
         const { status, data, error, reason } = await wallet.delegationTransaction({
             poolId,
         })
-        if (status)
-            return data.transactionId
+        return status ? data.transactionId : { error, reason }
     }
     else {
         const changeAddress = await getChangeAddress(wallet)
