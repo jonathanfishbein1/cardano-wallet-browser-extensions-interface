@@ -11,12 +11,12 @@ const TX = {
 }
 
 const supportedWallets = [
-    'Nami',
-    'Eternl', // ccvault
-    'Yoroi',
-    'Flint',
-    'Typhon',
-    'GeroWallet',
+    'nami',
+    'eternl',
+    'yoroi',
+    'flint',
+    'typhon',
+    'gero',
 ]
 
 
