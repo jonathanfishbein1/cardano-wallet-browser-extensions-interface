@@ -67,6 +67,9 @@ const delegateTo = async (wallet, poolId, protocolParameters, account) => {
                     hexToBytes(stakeKeyHash)
                 )
             )
+            , poolKeyHash = CSL.Ed25519KeyHash.from_bytes(
+                hexToBytes(poolId)
+            )
         if (!account.active) {
             certificates.add(
                 CSL.Certificate.new_stake_registration(
@@ -79,9 +82,7 @@ const delegateTo = async (wallet, poolId, protocolParameters, account) => {
                 CSL.Certificate.new_stake_delegation(
                     CSL.StakeDelegation.new(
                         stakeCredential,
-                        CSL.Ed25519KeyHash.from_bytes(
-                            hexToBytes(poolId)
-                        )
+                        poolKeyHash
                     )
                 )
             )
@@ -91,9 +92,7 @@ const delegateTo = async (wallet, poolId, protocolParameters, account) => {
                 CSL.Certificate.new_stake_delegation(
                     CSL.StakeDelegation.new(
                         stakeCredential,
-                        CSL.Ed25519KeyHash.from_bytes(
-                            hexToBytes(poolId)
-                        )
+                        poolKeyHash
                     )
                 )
             )
