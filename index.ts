@@ -49,7 +49,7 @@ const getUtxos = async wallet => {
         wallet.getUtxos().then(rawUtxos => rawUtxos.map(utxo => CSL.TransactionUnspentOutput.from_bytes(hexToBytes(utxo))))
 }
 
-const delegateTo = async (wallet, poolId, protocolParameters, accountInformation) => {
+const delegateTo = async (wallet, poolId, protocolParameters, account) => {
     if ('Typhon Wallet' === wallet.name) {
         const { status, data, error, reason } = await wallet.delegationTransaction({
             poolId,
@@ -62,7 +62,7 @@ const delegateTo = async (wallet, poolId, protocolParameters, accountInformation
             , outputs = await prepareTx(protocolParameters.keyDeposit, changeAddress)
             , stakeKeyHash = await getStakeKeyHash(wallet)
             , certificates = CSL.Certificates.new()
-        if (!accountInformation.active) {
+        if (!account.active) {
             certificates.add(
                 CSL.Certificate.new_stake_registration(
                     CSL.StakeRegistration.new(
@@ -74,21 +74,37 @@ const delegateTo = async (wallet, poolId, protocolParameters, accountInformation
                     )
                 )
             )
-        }
-        certificates.add(
-            CSL.Certificate.new_stake_delegation(
-                CSL.StakeDelegation.new(
-                    CSL.StakeCredential.from_keyhash(
+            certificates.add(
+                CSL.Certificate.new_stake_delegation(
+                    CSL.StakeDelegation.new(
+                        CSL.StakeCredential.from_keyhash(
+                            CSL.Ed25519KeyHash.from_bytes(
+                                hexToBytes(stakeKeyHash)
+                            )
+                        ),
                         CSL.Ed25519KeyHash.from_bytes(
-                            hexToBytes(stakeKeyHash)
+                            hexToBytes(poolId)
                         )
-                    ),
-                    CSL.Ed25519KeyHash.from_bytes(
-                        hexToBytes(poolId)
                     )
                 )
             )
-        )
+        }
+        else {
+            certificates.add(
+                CSL.Certificate.new_stake_delegation(
+                    CSL.StakeDelegation.new(
+                        CSL.StakeCredential.from_keyhash(
+                            CSL.Ed25519KeyHash.from_bytes(
+                                hexToBytes(stakeKeyHash)
+                            )
+                        ),
+                        CSL.Ed25519KeyHash.from_bytes(
+                            hexToBytes(poolId)
+                        )
+                    )
+                )
+            )
+        }
 
         const transaction = await buildTx(changeAddress, utxos, outputs, protocolParameters, certificates)
             , signedTransaction = await signTx(wallet, transaction)
