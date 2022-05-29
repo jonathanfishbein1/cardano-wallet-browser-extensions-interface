@@ -62,26 +62,23 @@ const delegateTo = async (wallet, poolId, protocolParameters, account) => {
             , outputs = await prepareTx(protocolParameters.keyDeposit, changeAddress)
             , stakeKeyHash = await getStakeKeyHash(wallet)
             , certificates = CSL.Certificates.new()
+            , stakeCredential = CSL.StakeCredential.from_keyhash(
+                CSL.Ed25519KeyHash.from_bytes(
+                    hexToBytes(stakeKeyHash)
+                )
+            )
         if (!account.active) {
             certificates.add(
                 CSL.Certificate.new_stake_registration(
                     CSL.StakeRegistration.new(
-                        CSL.StakeCredential.from_keyhash(
-                            CSL.Ed25519KeyHash.from_bytes(
-                                hexToBytes(stakeKeyHash)
-                            )
-                        )
+                        stakeCredential
                     )
                 )
             )
             certificates.add(
                 CSL.Certificate.new_stake_delegation(
                     CSL.StakeDelegation.new(
-                        CSL.StakeCredential.from_keyhash(
-                            CSL.Ed25519KeyHash.from_bytes(
-                                hexToBytes(stakeKeyHash)
-                            )
-                        ),
+                        stakeCredential,
                         CSL.Ed25519KeyHash.from_bytes(
                             hexToBytes(poolId)
                         )
@@ -93,11 +90,7 @@ const delegateTo = async (wallet, poolId, protocolParameters, account) => {
             certificates.add(
                 CSL.Certificate.new_stake_delegation(
                     CSL.StakeDelegation.new(
-                        CSL.StakeCredential.from_keyhash(
-                            CSL.Ed25519KeyHash.from_bytes(
-                                hexToBytes(stakeKeyHash)
-                            )
-                        ),
+                        stakeCredential,
                         CSL.Ed25519KeyHash.from_bytes(
                             hexToBytes(poolId)
                         )
