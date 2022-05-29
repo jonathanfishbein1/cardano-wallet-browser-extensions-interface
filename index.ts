@@ -59,8 +59,14 @@ const delegateTo = async (wallet, poolId, protocolParameters, account) => {
     else {
         const changeAddress = await getChangeAddress(wallet)
             , utxos = await getUtxos(wallet)
-            , outputs = await prepareTx(protocolParameters.keyDeposit, changeAddress)
-            , stakeKeyHash = await getStakeKeyHash(wallet)
+            , outputs = CSL.TransactionOutputs.new()
+        outputs.add(
+            CSL.TransactionOutput.new(
+                CSL.Address.from_bech32(changeAddress),
+                CSL.Value.new(CSL.BigNum.from_str(protocolParameters.keyDeposit))
+            )
+        )
+        const stakeKeyHash = await getStakeKeyHash(wallet)
             , certificates = CSL.Certificates.new()
             , stakeCredential = CSL.StakeCredential.from_keyhash(
                 CSL.Ed25519KeyHash.from_bytes(
@@ -70,6 +76,13 @@ const delegateTo = async (wallet, poolId, protocolParameters, account) => {
             , poolKeyHash = CSL.Ed25519KeyHash.from_bytes(
                 hexToBytes(poolId)
             )
+            , stakeDelegation = CSL.StakeDelegation.new(
+                stakeCredential,
+                poolKeyHash
+            )
+            , certificate = CSL.Certificate.new_stake_delegation(
+                stakeDelegation
+            )
         if (!account.active) {
             certificates.add(
                 CSL.Certificate.new_stake_registration(
@@ -78,25 +91,10 @@ const delegateTo = async (wallet, poolId, protocolParameters, account) => {
                     )
                 )
             )
-            certificates.add(
-                CSL.Certificate.new_stake_delegation(
-                    CSL.StakeDelegation.new(
-                        stakeCredential,
-                        poolKeyHash
-                    )
-                )
-            )
+            certificates.add(certificate)
         }
-        else {
-            certificates.add(
-                CSL.Certificate.new_stake_delegation(
-                    CSL.StakeDelegation.new(
-                        stakeCredential,
-                        poolKeyHash
-                    )
-                )
-            )
-        }
+        else
+            certificates.add(certificate)
 
         const transaction = await buildTx(changeAddress, utxos, outputs, protocolParameters, certificates)
             , signedTransaction = await signTx(wallet, transaction)
@@ -115,17 +113,6 @@ const signTx = async (wallet, transaction) => {
 
 
 const submitTx = async (wallet, signedTransaction) => await wallet.submitTx(hexToBytes(signedTransaction.to_bytes()).toString('hex'))
-
-export const prepareTx = async (lovelaceValue, paymentAddress) => {
-    const outputs = CSL.TransactionOutputs.new()
-    outputs.add(
-        CSL.TransactionOutput.new(
-            CSL.Address.from_bech32(paymentAddress),
-            CSL.Value.new(CSL.BigNum.from_str(lovelaceValue))
-        )
-    )
-    return outputs
-}
 
 export const buildTx = async (changeAddress, utxos, outputs, protocolParameters, certificates) => {
     CoinSelection.setProtocolParameters(
