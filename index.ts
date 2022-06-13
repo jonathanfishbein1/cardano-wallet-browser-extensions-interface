@@ -101,6 +101,23 @@ const delegateTo = async (wallet, poolId, protocolParameters, account) => {
         return await submitTx(wallet, signedTransaction)
     }
 }
+
+const buy = async (wallet, protocolParameters, account) => {
+    const changeAddress = await getChangeAddress(wallet)
+        , utxos = await getUtxos(wallet)
+        , outputs = CSL.TransactionOutputs.new()
+    outputs.add(
+        CSL.TransactionOutput.new(
+            CSL.Address.from_bech32(changeAddress),
+            CSL.Value.new(CSL.BigNum.from_str(protocolParameters.keyDeposit))
+        )
+    )
+
+    const transaction = await buildTx(changeAddress, utxos, outputs, protocolParameters)
+        , signedTransaction = await signTx(wallet, transaction)
+    return await submitTx(wallet, signedTransaction)
+}
+
 const signTx = async (wallet, transaction) => {
     return wallet.signTx(hexToBytes(transaction.to_bytes()).toString('hex')).then(witnesses => {
         return CSL.Transaction.new(
@@ -114,7 +131,7 @@ const signTx = async (wallet, transaction) => {
 
 const submitTx = async (wallet, signedTransaction) => await wallet.submitTx(hexToBytes(signedTransaction.to_bytes()).toString('hex'))
 
-export const buildTx = async (changeAddress, utxos, outputs, protocolParameters, certificates) => {
+export const buildTx = async (changeAddress, utxos, outputs, protocolParameters, certificates?) => {
     CoinSelection.setProtocolParameters(
         protocolParameters.minUtxo,
         protocolParameters.minFeeA.toString(),
