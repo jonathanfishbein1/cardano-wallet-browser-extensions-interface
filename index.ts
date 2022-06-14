@@ -102,22 +102,31 @@ const delegateTo = async (wallet, poolId, protocolParameters, account) => {
     }
 }
 
-const buy = async (wallet, protocolParameters, account) => {
-    const changeAddress = await getChangeAddress(wallet)
-        , utxos = await getUtxos(wallet)
-        , outputs = CSL.TransactionOutputs.new()
-    outputs.add(
-        CSL.TransactionOutput.new(
-            CSL.Address.from_bech32(changeAddress),
-            CSL.Value.new(CSL.BigNum.from_str(protocolParameters.keyDeposit))
+const buy = async (wallet, protocolParameters, account, payToAddress, amount) => {
+    if ('Typhon Wallet' === wallet.name) {
+        const typhonPayment = await wallet.paymentTransaction({
+            outputs: [{
+                payToAddress,
+                amount,
+            }],
+        })
+    }
+    else {
+        const changeAddress = await getChangeAddress(wallet)
+            , utxos = await getUtxos(wallet)
+            , outputs = CSL.TransactionOutputs.new()
+        outputs.add(
+            CSL.TransactionOutput.new(
+                CSL.Address.from_bech32(payToAddress),
+                CSL.Value.new(CSL.BigNum.from_str(amount))
+            )
         )
-    )
 
-    const transaction = await buildTx(changeAddress, utxos, outputs, protocolParameters)
-        , signedTransaction = await signTx(wallet, transaction)
-    return await submitTx(wallet, signedTransaction)
+        const transaction = await buildTx(changeAddress, utxos, outputs, protocolParameters)
+            , signedTransaction = await signTx(wallet, transaction)
+        return await submitTx(wallet, signedTransaction)
+    }
 }
-
 const signTx = async (wallet, transaction) => {
     return wallet.signTx(hexToBytes(transaction.to_bytes()).toString('hex')).then(witnesses => {
         return CSL.Transaction.new(
