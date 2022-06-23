@@ -70,7 +70,7 @@ const delegateTo = async (wallet, poolId, protocolParameters, account) => {
         outputs.add(
             CSL.TransactionOutput.new(
                 CSL.Address.from_bech32(changeAddress),
-                CSL.Value.new(CSL.BigNum.from_str(protocolParameters.keyDeposit))
+                CSL.Value.new(CSL.BigNum.from_str(protocolParameters.key_deposit))
             )
         )
         const stakeKeyHash = await getStakeKeyHash(wallet)
@@ -163,16 +163,16 @@ const submitTx = async (wallet, signedTransaction) => await wallet.submitTx(hexT
 
 export const buildTx = async (changeAddress, utxos, outputs, protocolParameters, certificates?, hasDataHash?) => {
     const linearFee = CSL.LinearFee.new(
-        CSL.BigNum.from_str(protocolParameters.minFeeA.toString()),
-        CSL.BigNum.from_str(protocolParameters.minFeeB.toString())
+        CSL.BigNum.from_str(protocolParameters.min_fee_a.toString()),
+        CSL.BigNum.from_str(protocolParameters.min_fee_b.toString())
     )
         , transactionBuilderConfig = CSL.TransactionBuilderConfigBuilder.new()
             .fee_algo(linearFee)
-            .pool_deposit(CSL.BigNum.from_str(protocolParameters.poolDeposit))
-            .key_deposit(CSL.BigNum.from_str(protocolParameters.keyDeposit))
-            .max_value_size(protocolParameters.maxValSize)
-            .max_tx_size(protocolParameters.maxTxSize)
-            .coins_per_utxo_word(CSL.BigNum.from_str(protocolParameters.coinsPerUtxoWord))
+            .pool_deposit(CSL.BigNum.from_str(protocolParameters.pool_deposit))
+            .key_deposit(CSL.BigNum.from_str(protocolParameters.key_deposit))
+            .max_value_size(protocolParameters.max_val_size)
+            .max_tx_size(protocolParameters.max_tx_size)
+            .coins_per_utxo_word(CSL.BigNum.from_str(protocolParameters.coins_per_utxo_word))
             .build()
         //.ex_unit_prices(CSL.ExUnitPrices.new())
         , txBuilder = CSL.TransactionBuilder.new(
@@ -190,7 +190,7 @@ export const buildTx = async (changeAddress, utxos, outputs, protocolParameters,
     txBuilder.add_change_if_needed(CSL.Address.from_bech32(changeAddress))
     const transaction = CSL.Transaction.new(txBuilder.build(), CSL.TransactionWitnessSet.new())
         , size = transaction.to_bytes().length * 2
-    if (size > protocolParameters.maxTxSize) throw TX.too_big
+    if (size > protocolParameters.max_tx_size) throw TX.too_big
     return transaction
 }
 
