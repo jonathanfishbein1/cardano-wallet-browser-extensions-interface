@@ -1,6 +1,5 @@
 import * as CSL from '@emurgo/cardano-serialization-lib-browser'
 import { Buffer } from 'buffer'
-import CoinSelection from './lib/coinSelection'
 
 const hexToBytes = string => Buffer.from(string, 'hex'),
     hexToBech32 = address => CSL.Address.from_bytes(hexToBytes(address)).to_bech32()
