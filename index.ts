@@ -18,6 +18,15 @@ const supportedWallets = [
     'gero',
 ]
 
+const getCollateral = async wallet => {
+    const collateral = ("Nami" === wallet.name) ?
+        wallet.experimental.getCollateral()
+        :
+        wallet.getCollateral()
+    return await collateral.then(utxoRefs =>
+        utxoRefs.map(utxoRef => CSL.TransactionUnspentOutput.from_bytes(Buffer.from(utxoRef, "hex")))
+    )
+}
 
 const getRewardAddress = async wallet => {
     return await ('Typhon Wallet' === wallet.name) ?
@@ -100,6 +109,8 @@ const delegateTo = async (wallet, poolId, protocolParameters, account) => {
         return await submitTx(wallet, signedTransaction)
     }
 }
+
+
 
 const buy = async (wallet, protocolParameters, account, payToAddress, amount) => {
     if ('Typhon Wallet' === wallet.name) {
@@ -216,5 +227,5 @@ const getWallet = async type => await getWalletApi(type.toLowerCase())
 export { CSL }
 export {
     hasWallet, getWallet, getRewardAddress,
-    delegateTo
+    delegateTo, getCollateral
 }
