@@ -104,7 +104,7 @@ const delegateTo = async (wallet, poolId, protocolParameters, account) => {
         else
             certificates.add(certificate)
 
-        const transaction = await buildTx(changeAddress, utxos, outputs, protocolParameters, certificates)
+        const transaction = await buildTx(changeAddress, utxos, outputs, protocolParameters, certificates, false)
             , signedTransaction = await signTx(wallet, transaction)
         return await submitTx(wallet, signedTransaction)
     }
@@ -112,7 +112,8 @@ const delegateTo = async (wallet, poolId, protocolParameters, account) => {
 
 
 
-const buy = async (wallet, protocolParameters, account, payToAddress, amount) => {
+const buy = async (wallet, protocolParameters, account, payToAddress, amount, addressScriptBech32) => {
+
     if ('Typhon Wallet' === wallet.name) {
         const typhonPayment = await wallet.paymentTransaction({
             outputs: [{
@@ -131,8 +132,19 @@ const buy = async (wallet, protocolParameters, account, payToAddress, amount) =>
                 CSL.Value.new(CSL.BigNum.from_str(amount))
             )
         )
+        const dataHash = CSL.hash_plutus_data(CSL.PlutusData.new_integer(CSL.BigInt.from_str("0")))
 
-        const transaction = await buildTx(changeAddress, utxos, outputs, protocolParameters)
+        outputs.add(
+            CSL.TransactionOutput.new(
+                CSL.Address.from_bech32(addressScriptBech32),
+                CSL.Value.new(CSL.BigNum.from_str(amount)),
+            )
+        )
+
+
+
+
+        const transaction = await buildTx(changeAddress, utxos, outputs, protocolParameters, undefined, true)
             , signedTransaction = await signTx(wallet, transaction)
         return await submitTx(wallet, signedTransaction)
     }
@@ -150,7 +162,7 @@ const signTx = async (wallet, transaction) => {
 
 const submitTx = async (wallet, signedTransaction) => await wallet.submitTx(hexToBytes(signedTransaction.to_bytes()).toString('hex'))
 
-export const buildTx = async (changeAddress, utxos, outputs, protocolParameters, certificates?) => {
+export const buildTx = async (changeAddress, utxos, outputs, protocolParameters, certificates?, hasDataHash?) => {
     CoinSelection.setProtocolParameters(
         protocolParameters.minUtxo,
         protocolParameters.minFeeA.toString(),
@@ -159,20 +171,27 @@ export const buildTx = async (changeAddress, utxos, outputs, protocolParameters,
     )
     const selection = await CoinSelection.randomImprove(utxos, outputs, 20)
         , inputs = selection.input
+    const linearFee = CSL.LinearFee.new(
+        CSL.BigNum.from_str(protocolParameters.minFeeA.toString()),
+        CSL.BigNum.from_str(protocolParameters.minFeeB.toString())
+    )
+        , transactionBuilderConfig = CSL.TransactionBuilderConfigBuilder.new()
+            .fee_algo(linearFee)
+            .pool_deposit(protocolParameters.poolDeposit)
+            .key_deposit(protocolParameters.keyDeposit)
+            .max_value_size(protocolParameters.maxValSize)
+            .max_tx_size(protocolParameters.maxTxSize)
+            .coins_per_utxo_word(CSL.BigNum.from_str('34482'))
+            //.ex_unit_prices(CSL.ExUnitPrices.new())
+            .build()
         , txBuilder = CSL.TransactionBuilder.new(
-            CSL.LinearFee.new(
-                CSL.BigNum.from_str(protocolParameters.minFeeA.toString()),
-                CSL.BigNum.from_str(protocolParameters.minFeeB.toString())
-            ),
-            CSL.BigNum.from_str(protocolParameters.minUtxo),
-            CSL.BigNum.from_str(protocolParameters.poolDeposit),
-            CSL.BigNum.from_str(protocolParameters.keyDeposit),
-            protocolParameters.maxValSize,
-            protocolParameters.maxTxSize
+            transactionBuilderConfig
         )
     if (certificates)
         txBuilder.set_certs(certificates)
-    inputs.map(utxo => txBuilder.add_input(utxo.output().address(), utxo.input(), utxo.output().amount()))
+    const inputBuilder = CSL.TxInputsBuilder.new()
+    inputs.map(utxo => inputBuilder.add_input(utxo.output().address(), utxo.input(), utxo.output().amount()))
+    txBuilder.set_inputs(inputBuilder)
     txBuilder.add_output(outputs.get(0))
     const change = selection.change
         , changeMultiAssets = change.multiasset()
@@ -198,7 +217,7 @@ export const buildTx = async (changeAddress, utxos, outputs, protocolParameters,
         }
         )
         partialChange.set_multiasset(partialMultiAssets)
-        const minAda = CSL.min_ada_required(partialChange, CSL.BigNum.from_str(protocolParameters.minUtxo))
+        const minAda = CSL.min_ada_required(partialChange, hasDataHash, (CSL.BigNum.from_str('34482')))
         partialChange.set_coin(minAda)
         txBuilder.add_output(CSL.TransactionOutput.new(CSL.Address.from_bech32(changeAddress), partialChange))
     }
