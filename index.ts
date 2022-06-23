@@ -163,64 +163,31 @@ const signTx = async (wallet, transaction) => {
 const submitTx = async (wallet, signedTransaction) => await wallet.submitTx(hexToBytes(signedTransaction.to_bytes()).toString('hex'))
 
 export const buildTx = async (changeAddress, utxos, outputs, protocolParameters, certificates?, hasDataHash?) => {
-    CoinSelection.setProtocolParameters(
-        protocolParameters.minUtxo,
-        protocolParameters.minFeeA.toString(),
-        protocolParameters.minFeeB.toString(),
-        protocolParameters.maxTxSize.toString()
-    )
-    const selection = await CoinSelection.randomImprove(utxos, outputs, 20)
-        , inputs = selection.input
     const linearFee = CSL.LinearFee.new(
         CSL.BigNum.from_str(protocolParameters.minFeeA.toString()),
         CSL.BigNum.from_str(protocolParameters.minFeeB.toString())
     )
         , transactionBuilderConfig = CSL.TransactionBuilderConfigBuilder.new()
             .fee_algo(linearFee)
-            .pool_deposit(protocolParameters.poolDeposit)
-            .key_deposit(protocolParameters.keyDeposit)
+            .pool_deposit(CSL.BigNum.from_str(protocolParameters.poolDeposit))
+            .key_deposit(CSL.BigNum.from_str(protocolParameters.keyDeposit))
             .max_value_size(protocolParameters.maxValSize)
             .max_tx_size(protocolParameters.maxTxSize)
-            .coins_per_utxo_word(CSL.BigNum.from_str('34482'))
-            //.ex_unit_prices(CSL.ExUnitPrices.new())
+            .coins_per_utxo_word(CSL.BigNum.from_str(protocolParameters.coinsPerUtxoWord))
             .build()
+        //.ex_unit_prices(CSL.ExUnitPrices.new())
         , txBuilder = CSL.TransactionBuilder.new(
             transactionBuilderConfig
         )
     if (certificates)
         txBuilder.set_certs(certificates)
     const inputBuilder = CSL.TxInputsBuilder.new()
-    inputs.map(utxo => inputBuilder.add_input(utxo.output().address(), utxo.input(), utxo.output().amount()))
+
     txBuilder.set_inputs(inputBuilder)
     txBuilder.add_output(outputs.get(0))
-    const change = selection.change
-        , changeMultiAssets = change.multiasset()
-    if (changeMultiAssets && change.to_bytes().length * 2 > protocolParameters.maxValSize) {
-        const partialChange = CSL.Value.new(CSL.BigNum.from_str('0'))
-            , partialMultiAssets = CSL.MultiAsset.new()
-            , policies = changeMultiAssets.keys()
-        policies.map(policy => {
-            const policyAssets = changeMultiAssets.get(policy)
-                , assetNames = policyAssets.keys()
-                , assets = CSL.Assets.new()
-            assetNames.map(policyAsset => {
-                const quantity = policyAssets.get(policyAsset)
-                assets.insert(policyAsset, quantity)
-                const checkMultiAssets = CSL.MultiAsset.from_bytes(partialMultiAssets.to_bytes())
-                checkMultiAssets.insert(policy, assets)
-                const checkValue = CSL.Value.new(CSL.BigNum.from_str('0'))
-                checkValue.set_multiasset(checkMultiAssets)
-                if (checkValue.to_bytes().length * 2 >= protocolParameters.maxValSize)
-                    partialMultiAssets.insert(policy, assets)
-            })
-            partialMultiAssets.insert(policy, assets)
-        }
-        )
-        partialChange.set_multiasset(partialMultiAssets)
-        const minAda = CSL.min_ada_required(partialChange, hasDataHash, (CSL.BigNum.from_str('34482')))
-        partialChange.set_coin(minAda)
-        txBuilder.add_output(CSL.TransactionOutput.new(CSL.Address.from_bech32(changeAddress), partialChange))
-    }
+    const utxosPlural = CSL.TransactionUnspentOutputs.new()
+    utxos.map(utxo => utxosPlural.add(utxo))
+    txBuilder.add_inputs_from(utxosPlural, CSL.CoinSelectionStrategyCIP2.RandomImprove)
     txBuilder.add_change_if_needed(CSL.Address.from_bech32(changeAddress))
     const transaction = CSL.Transaction.new(txBuilder.build(), CSL.TransactionWitnessSet.new())
         , size = transaction.to_bytes().length * 2
