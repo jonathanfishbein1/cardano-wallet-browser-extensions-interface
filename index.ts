@@ -103,8 +103,31 @@ const delegateTo = async (wallet, poolId, protocolParameters, account) => {
         else
             certificates.add(certificate)
 
-        const transaction = await buildTx(changeAddress, utxos, outputs, protocolParameters, certificates, false)
-            , signedTransaction = await signTx(wallet, transaction)
+        const linearFee = CSL.LinearFee.new(
+            CSL.BigNum.from_str(protocolParameters.min_fee_a.toString()),
+            CSL.BigNum.from_str(protocolParameters.min_fee_b.toString())
+        )
+            , transactionBuilderConfig = CSL.TransactionBuilderConfigBuilder.new()
+                .fee_algo(linearFee)
+                .pool_deposit(CSL.BigNum.from_str(protocolParameters.pool_deposit))
+                .key_deposit(CSL.BigNum.from_str(protocolParameters.key_deposit))
+                .max_value_size(protocolParameters.max_val_size)
+                .max_tx_size(protocolParameters.max_tx_size)
+                .coins_per_utxo_word(CSL.BigNum.from_str(protocolParameters.coins_per_utxo_word))
+                .build()
+            , txBuilder = CSL.TransactionBuilder.new(
+                transactionBuilderConfig
+            )
+
+        txBuilder.set_certs(certificates)
+        const utxosPlural = CSL.TransactionUnspentOutputs.new()
+        utxos.map(utxo => utxosPlural.add(utxo))
+        txBuilder.add_inputs_from(utxosPlural, CSL.CoinSelectionStrategyCIP2.RandomImprove)
+        txBuilder.add_change_if_needed(CSL.Address.from_bech32(changeAddress))
+
+
+        const transaction = CSL.Transaction.new(txBuilder.build(), CSL.TransactionWitnessSet.new())
+        const signedTransaction = await signTx(wallet, transaction)
         return await submitTx(wallet, signedTransaction)
     }
 }
@@ -143,7 +166,7 @@ const buy = async (wallet, protocolParameters, account, payToAddress, amount, ad
                 .with_value(CSL.Value.new(CSL.BigNum.from_str("2000000")))
                 .build()
 
-        CSL.Uni
+
         const multiAsset = CSL.MultiAsset.new()
         const assets = CSL.Assets.new()
         assets.insert(CSL.AssetName.new(Buffer.from("43617264616e6961466f756e6465725768697465", "hex")),
@@ -165,9 +188,9 @@ const buy = async (wallet, protocolParameters, account, payToAddress, amount, ad
 
 
 
-        const transaction = await buildTx(changeAddress, utxos, transactionOutputs, protocolParameters, undefined, true)
-            , signedTransaction = await signTx(wallet, transaction)
-        return await submitTx(wallet, signedTransaction)
+        //  const transaction = await buildTx(changeAddress, utxos, transactionOutputs, protocolParameters, undefined, true)
+        //      , signedTransaction = await signTx(wallet, transaction)
+        // return await submitTx(wallet, signedTransaction)
     }
 }
 const signTx = async (wallet, transaction) => {
@@ -183,38 +206,6 @@ const signTx = async (wallet, transaction) => {
 
 const submitTx = async (wallet, signedTransaction) => await wallet.submitTx(hexToBytes(signedTransaction.to_bytes()).toString('hex'))
 
-export const buildTx = async (changeAddress, utxos, outputs, protocolParameters, certificates?, hasDataHash?) => {
-    const linearFee = CSL.LinearFee.new(
-        CSL.BigNum.from_str(protocolParameters.min_fee_a.toString()),
-        CSL.BigNum.from_str(protocolParameters.min_fee_b.toString())
-    )
-        , transactionBuilderConfig = CSL.TransactionBuilderConfigBuilder.new()
-            .fee_algo(linearFee)
-            .pool_deposit(CSL.BigNum.from_str(protocolParameters.pool_deposit))
-            .key_deposit(CSL.BigNum.from_str(protocolParameters.key_deposit))
-            .max_value_size(protocolParameters.max_val_size)
-            .max_tx_size(protocolParameters.max_tx_size)
-            .coins_per_utxo_word(CSL.BigNum.from_str(protocolParameters.coins_per_utxo_word))
-            .build()
-        //.ex_unit_prices(CSL.ExUnitPrices.new())
-        , txBuilder = CSL.TransactionBuilder.new(
-            transactionBuilderConfig
-        )
-    if (certificates)
-        txBuilder.set_certs(certificates)
-    const inputBuilder = CSL.TxInputsBuilder.new()
-
-    txBuilder.set_inputs(inputBuilder)
-    txBuilder.add_output(outputs.get(0))
-    const utxosPlural = CSL.TransactionUnspentOutputs.new()
-    utxos.map(utxo => utxosPlural.add(utxo))
-    txBuilder.add_inputs_from(utxosPlural, CSL.CoinSelectionStrategyCIP2.RandomImprove)
-    txBuilder.add_change_if_needed(CSL.Address.from_bech32(changeAddress))
-    const transaction = CSL.Transaction.new(txBuilder.build(), CSL.TransactionWitnessSet.new())
-        , size = transaction.to_bytes().length * 2
-    if (size > protocolParameters.max_tx_size) throw TX.too_big
-    return transaction
-}
 
 declare var window: any
 const getWalletApi = async namespace => {
