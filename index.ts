@@ -124,26 +124,48 @@ const buy = async (wallet, protocolParameters, account, payToAddress, amount, ad
     else {
         const changeAddress = await getChangeAddress(wallet)
             , utxos = await getUtxos(wallet)
-            , outputs = CSL.TransactionOutputs.new()
-        outputs.add(
-            CSL.TransactionOutput.new(
-                CSL.Address.from_bech32(payToAddress),
-                CSL.Value.new(CSL.BigNum.from_str(amount))
-            )
-        )
+
+        //   , outputs = CSL.TransactionOutputs.new()
         const dataHash = CSL.hash_plutus_data(CSL.PlutusData.new_integer(CSL.BigInt.from_str("0")))
 
-        outputs.add(
-            CSL.TransactionOutput.new(
-                CSL.Address.from_bech32(addressScriptBech32),
-                CSL.Value.new(CSL.BigNum.from_str(amount)),
-            )
+        const transactionOutputToSeller =
+            CSL.TransactionOutputBuilder.new()
+                .with_address(payToAddress)
+                .next()
+                .with_value(CSL.Value.new(CSL.BigNum.from_str(amount)))
+                .build()
+
+        const transactionOutputToScript =
+            CSL.TransactionOutputBuilder.new()
+                .with_address(addressScriptBech32)
+                .with_data_hash(dataHash)
+                .next()
+                .with_value(CSL.Value.new(CSL.BigNum.from_str("2000000")))
+                .build()
+
+        CSL.Uni
+        const multiAsset = CSL.MultiAsset.new()
+        const assets = CSL.Assets.new()
+        assets.insert(CSL.AssetName.new(Buffer.from("43617264616e6961466f756e6465725768697465", "hex")),
+            CSL.BigNum.from_str('1')
         )
+        multiAsset.insert(CSL.ScriptHash.from_bytes(Buffer.from('641593ca39c5cbd3eb314533841d53e61ebf6ee7a0ec7c391652f31e')),
+            assets)
+        const transactionOutputToBuyer =
+            CSL.TransactionOutputBuilder.new()
+                .with_address(changeAddress)
+                .next()
+                .with_asset_and_min_required_coin(multiAsset, CSL.BigNum.from_str(protocolParameters.coins_per_utxo_word))
+                .build()
+
+        const transactionOutputs = CSL.TransactionOutputs.new()
+        transactionOutputs.add(transactionOutputToSeller)
+        transactionOutputs.add(transactionOutputToScript)
+        transactionOutputs.add(transactionOutputToBuyer)
 
 
 
-
-        const transaction = await buildTx(changeAddress, utxos, outputs, protocolParameters, undefined, true)
+        const transaction = await buildTx(changeAddress, utxos, transactionOutputs, protocolParameters, undefined, true)
             , signedTransaction = await signTx(wallet, transaction)
         return await submitTx(wallet, signedTransaction)
     }
