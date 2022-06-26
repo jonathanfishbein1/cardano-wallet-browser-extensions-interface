@@ -242,8 +242,8 @@ const buy = async (wallet, protocolParameters, payToAddress, amount, addressScri
         txBody.set_script_data_hash(scriptDataHash);
 
 
-
-        const baseAddress = CSL.BaseAddress.from_address(changeAddress)
+        const baseAddress = CSL.BaseAddress.from_address(
+            CSL.Address.from_bech32(changeAddress))
         const requiredSigners = CSL.Ed25519KeyHashes.new()
         if (baseAddress !== undefined) {
             const baseAddressPaymentPubKeyHash = baseAddress.payment_cred().to_keyhash()
