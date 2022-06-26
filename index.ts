@@ -245,8 +245,10 @@ const buy = async (wallet, protocolParameters, payToAddress, amount, addressScri
         const baseAddress = CSL.BaseAddress.from_address(
             CSL.Address.from_bech32(changeAddress))
         const requiredSigners = CSL.Ed25519KeyHashes.new()
+        console.log(baseAddress)
         if (baseAddress !== undefined) {
             const baseAddressPaymentPubKeyHash = baseAddress.payment_cred().to_keyhash()
+            console.log(baseAddressPaymentPubKeyHash)
             if (baseAddressPaymentPubKeyHash !== undefined)
                 requiredSigners.add(baseAddressPaymentPubKeyHash)
         }
@@ -257,15 +259,7 @@ const buy = async (wallet, protocolParameters, payToAddress, amount, addressScri
             txBody,
             CSL.TransactionWitnessSet.from_bytes(transactionWitnessSet.to_bytes())
         )
-        const txBytes = tx.to_bytes()
-        const thing = Buffer.from(txBytes).toString("hex")
-        let txVkeyWitnesses = await wallet.signTx(thing, true);
-        txVkeyWitnesses = CSL.TransactionWitnessSet.from_bytes(Buffer.from(txVkeyWitnesses, "hex"));
-
-        transactionWitnessSet.set_vkeys(txVkeyWitnesses.vkeys());
-
-        const transaction = CSL.Transaction.new(txBody, CSL.TransactionWitnessSet.new())
-        const signedTransaction = await signTx(wallet, transaction)
+        const signedTransaction = await signTx(wallet, tx)
         return await submitTx(wallet, signedTransaction)
 
     }
