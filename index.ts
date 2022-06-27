@@ -178,7 +178,7 @@ const buy = async (wallet, protocolParameters, payToAddress, amount, addressScri
         const utxosPlural = CSL.TransactionUnspentOutputs.new()
         utxos.map(utxo => utxosPlural.add(utxo))
         txBuilder.add_inputs_from(utxosPlural, CSL.CoinSelectionStrategyCIP2.RandomImprove)
-
+        txBuilder.set_inputs(inputBuilder)
         const collateral = await getCollateral(wallet)
         collateral.map((utxo: CSL.TransactionUnspentOutput) => inputBuilder.add_input(utxo.output().address(), utxo.input(), utxo.output().amount()))
         txBuilder.set_collateral(inputBuilder)
