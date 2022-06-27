@@ -50,10 +50,14 @@ const getChangeAddress = async wallet => {
 
 
 const getUtxos = async wallet => {
-    return await ('Typhon Wallet' === wallet.name) ?
-        []
-        :
-        wallet.getUtxos().then(rawUtxos => rawUtxos.map(utxo => CSL.TransactionUnspentOutput.from_bytes(hexToBytes(utxo))))
+    const utxosPlural = CSL.TransactionUnspentOutputs.new()
+        , rawUtxos = ('Typhon Wallet' === wallet.name) ?
+            []
+            :
+            await wallet.getUtxos()
+        , utxosAll = rawUtxos.map(utxo => CSL.TransactionUnspentOutput.from_bytes(hexToBytes(utxo)))
+    utxosAll.map(utxoAll => utxosPlural.add(utxoAll))
+    return utxosPlural
 }
 
 const delegateTo = async (wallet, poolId, protocolParameters, account) => {
@@ -120,9 +124,7 @@ const delegateTo = async (wallet, poolId, protocolParameters, account) => {
             )
 
         txBuilder.set_certs(certificates)
-        const utxosPlural = CSL.TransactionUnspentOutputs.new()
-        utxos.map(utxo => utxosPlural.add(utxo))
-        txBuilder.add_inputs_from(utxosPlural, CSL.CoinSelectionStrategyCIP2.RandomImprove)
+        txBuilder.add_inputs_from(utxos, CSL.CoinSelectionStrategyCIP2.RandomImprove)
         txBuilder.add_change_if_needed(CSL.Address.from_bech32(changeAddress))
 
 
@@ -145,6 +147,7 @@ const buy = async (wallet, protocolParameters, payToAddress, amount, addressScri
     }
     else {
         const utxos = await getUtxos(wallet)
+        console.log(utxos)
         const linearFee = CSL.LinearFee.new(
             CSL.BigNum.from_str(protocolParameters.min_fee_a.toString()),
             CSL.BigNum.from_str(protocolParameters.min_fee_b.toString())
@@ -175,9 +178,7 @@ const buy = async (wallet, protocolParameters, payToAddress, amount, addressScri
                 1),
             CSL.Value.new_from_assets(multiAsset)
         )
-        const utxosPlural = CSL.TransactionUnspentOutputs.new()
-        utxos.map(utxo => utxosPlural.add(utxo))
-        txBuilder.add_inputs_from(utxosPlural, CSL.CoinSelectionStrategyCIP2.RandomImprove)
+        txBuilder.add_inputs_from(utxos, CSL.CoinSelectionStrategyCIP2.RandomImprove)
         txBuilder.set_inputs(inputBuilder)
         const collateral = await getCollateral(wallet)
         collateral.map((utxo: CSL.TransactionUnspentOutput) => inputBuilder.add_input(utxo.output().address(), utxo.input(), utxo.output().amount()))
@@ -220,8 +221,8 @@ const buy = async (wallet, protocolParameters, payToAddress, amount, addressScri
         transactionOutputs.add(transactionOutputToScript)
         transactionOutputs.add(transactionOutputToBuyer)
 
-        txBuilder.set_fee(CSL.BigNum.from_str('900000'))
-        //txBuilder.add_change_if_needed(CSL.Address.from_bech32(changeAddress))
+        //txBuilder.set_fee(CSL.BigNum.from_str('900000'))
+        txBuilder.add_change_if_needed(CSL.Address.from_bech32(changeAddress))
 
         const txBody = txBuilder.build()
             , redeemers = CSL.Redeemers.new()
