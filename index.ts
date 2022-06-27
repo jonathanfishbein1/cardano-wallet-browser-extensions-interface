@@ -167,7 +167,8 @@ const buy = async (wallet, protocolParameters, payToAddress, amount, addressScri
         )
         multiAsset.insert(CSL.ScriptHash.from_bytes(hexToBytes('641593ca39c5cbd3eb314533841d53e61ebf6ee7a0ec7c391652f31e')),
             assets)
-        txBuilder.add_input(
+        const inputBuilder = CSL.TxInputsBuilder.new()
+        inputBuilder.add_input(
             CSL.Address.from_bech32(addressScriptBech32),
             CSL.TransactionInput.new(
                 CSL.TransactionHash.from_bytes(Buffer.from('f3d2f39db539ef45c3156242f41b00b6ba5a39e9918a3e50788c127cd2b113ee', "hex")),
@@ -177,8 +178,8 @@ const buy = async (wallet, protocolParameters, payToAddress, amount, addressScri
         const utxosPlural = CSL.TransactionUnspentOutputs.new()
         utxos.map(utxo => utxosPlural.add(utxo))
         txBuilder.add_inputs_from(utxosPlural, CSL.CoinSelectionStrategyCIP2.RandomImprove)
-        const inputBuilder = CSL.TxInputsBuilder.new()
-            , collateral = await getCollateral(wallet)
+
+        const collateral = await getCollateral(wallet)
         collateral.map((utxo: CSL.TransactionUnspentOutput) => inputBuilder.add_input(utxo.output().address(), utxo.input(), utxo.output().amount()))
         txBuilder.set_collateral(inputBuilder)
 
