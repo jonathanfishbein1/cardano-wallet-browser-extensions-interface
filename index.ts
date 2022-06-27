@@ -186,7 +186,7 @@ const buy = async (wallet, protocolParameters, payToAddress, amount, addressScri
 
 
 
-        const datum = CSL.PlutusData.new_constr_plutus_data(CSL.ConstrPlutusData.new(CSL.BigNum.from_str('0'), CSL.PlutusList.new()))
+        const datum = CSL.PlutusData.new_empty_constr_plutus_data((CSL.BigNum.from_str('0')))
         console.log(datum)
         const changeAddress = await getChangeAddress(wallet)
 
@@ -225,7 +225,7 @@ const buy = async (wallet, protocolParameters, payToAddress, amount, addressScri
 
         const txBody = txBuilder.build()
             , redeemers = CSL.Redeemers.new()
-            , data = CSL.PlutusData.new_constr_plutus_data(CSL.ConstrPlutusData.new(CSL.BigNum.from_str('0'), CSL.PlutusList.new()))
+            , data = CSL.PlutusData.new_empty_constr_plutus_data((CSL.BigNum.from_str('0')))
             , redeemer = CSL.Redeemer.new(CSL.RedeemerTag.new_spend()
                 , CSL.BigNum.from_str('0'), data, CSL.ExUnits.new(CSL.BigNum.from_str('7000000')
                     , CSL.BigNum.from_str('3000000000')))
