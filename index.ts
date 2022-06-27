@@ -144,10 +144,51 @@ const buy = async (wallet, protocolParameters, payToAddress, amount, addressScri
         })
     }
     else {
+        const utxos = await getUtxos(wallet)
+        const linearFee = CSL.LinearFee.new(
+            CSL.BigNum.from_str(protocolParameters.min_fee_a.toString()),
+            CSL.BigNum.from_str(protocolParameters.min_fee_b.toString())
+        )
+            , transactionBuilderConfig = CSL.TransactionBuilderConfigBuilder.new()
+                .fee_algo(linearFee)
+                .pool_deposit(CSL.BigNum.from_str(protocolParameters.pool_deposit))
+                .key_deposit(CSL.BigNum.from_str(protocolParameters.key_deposit))
+                .max_value_size(protocolParameters.max_val_size)
+                .max_tx_size(protocolParameters.max_tx_size)
+                .coins_per_utxo_word(CSL.BigNum.from_str(protocolParameters.coins_per_utxo_word))
+                .build()
+            , txBuilder = CSL.TransactionBuilder.new(
+                transactionBuilderConfig
+            )
+        const multiAsset = CSL.MultiAsset.new()
+            , assets = CSL.Assets.new()
+        assets.insert(CSL.AssetName.new(Buffer.from('43617264616e6961466f756e6465725768697465', 'hex')),
+            CSL.BigNum.from_str('1')
+        )
+        multiAsset.insert(CSL.ScriptHash.from_bytes(hexToBytes('641593ca39c5cbd3eb314533841d53e61ebf6ee7a0ec7c391652f31e')),
+            assets)
+        txBuilder.add_input(
+            CSL.Address.from_bech32(addressScriptBech32),
+            CSL.TransactionInput.new(
+                CSL.TransactionHash.from_bytes(Buffer.from('f3d2f39db539ef45c3156242f41b00b6ba5a39e9918a3e50788c127cd2b113ee', "hex")),
+                1),
+            CSL.Value.new_from_assets(multiAsset)
+        )
+        const utxosPlural = CSL.TransactionUnspentOutputs.new()
+        utxos.map(utxo => utxosPlural.add(utxo))
+        txBuilder.add_inputs_from(utxosPlural, CSL.CoinSelectionStrategyCIP2.RandomImprove)
+        const inputBuilder = CSL.TxInputsBuilder.new()
+            , collateral = await getCollateral(wallet)
+        collateral.map((utxo: CSL.TransactionUnspentOutput) => inputBuilder.add_input(utxo.output().address(), utxo.input(), utxo.output().amount()))
+        txBuilder.set_collateral(inputBuilder)
+
+
+
+
         const datum = CSL.PlutusData.new_constr_plutus_data(CSL.ConstrPlutusData.new(CSL.BigNum.from_str('0'), CSL.PlutusList.new()))
         console.log(datum)
         const changeAddress = await getChangeAddress(wallet)
-            , utxos = await getUtxos(wallet)
+
             , dataHash = CSL.hash_plutus_data(datum)
             , datums = CSL.PlutusList.new()
         datums.add(datum)
@@ -166,13 +207,7 @@ const buy = async (wallet, protocolParameters, payToAddress, amount, addressScri
                     .build()
 
 
-        const multiAsset = CSL.MultiAsset.new()
-            , assets = CSL.Assets.new()
-        assets.insert(CSL.AssetName.new(Buffer.from('43617264616e6961466f756e6465725768697465', 'hex')),
-            CSL.BigNum.from_str('1')
-        )
-        multiAsset.insert(CSL.ScriptHash.from_bytes(hexToBytes('641593ca39c5cbd3eb314533841d53e61ebf6ee7a0ec7c391652f31e')),
-            assets)
+
         const transactionOutputToBuyer =
             CSL.TransactionOutputBuilder.new()
                 .with_address(CSL.Address.from_bech32(changeAddress))
@@ -183,29 +218,9 @@ const buy = async (wallet, protocolParameters, payToAddress, amount, addressScri
         transactionOutputs.add(transactionOutputToSeller)
         transactionOutputs.add(transactionOutputToScript)
         transactionOutputs.add(transactionOutputToBuyer)
-        const linearFee = CSL.LinearFee.new(
-            CSL.BigNum.from_str(protocolParameters.min_fee_a.toString()),
-            CSL.BigNum.from_str(protocolParameters.min_fee_b.toString())
-        )
-            , transactionBuilderConfig = CSL.TransactionBuilderConfigBuilder.new()
-                .fee_algo(linearFee)
-                .pool_deposit(CSL.BigNum.from_str(protocolParameters.pool_deposit))
-                .key_deposit(CSL.BigNum.from_str(protocolParameters.key_deposit))
-                .max_value_size(protocolParameters.max_val_size)
-                .max_tx_size(protocolParameters.max_tx_size)
-                .coins_per_utxo_word(CSL.BigNum.from_str(protocolParameters.coins_per_utxo_word))
-                .build()
-            , txBuilder = CSL.TransactionBuilder.new(
-                transactionBuilderConfig
-            )
-        const utxosPlural = CSL.TransactionUnspentOutputs.new()
-        utxos.map(utxo => utxosPlural.add(utxo))
-        txBuilder.add_inputs_from(utxosPlural, CSL.CoinSelectionStrategyCIP2.RandomImprove)
-        const inputBuilder = CSL.TxInputsBuilder.new()
-            , collateral = await getCollateral(wallet)
-        collateral.map((utxo: CSL.TransactionUnspentOutput) => inputBuilder.add_input(utxo.output().address(), utxo.input(), utxo.output().amount()))
-        txBuilder.set_collateral(inputBuilder)
-        txBuilder.add_change_if_needed(CSL.Address.from_bech32(changeAddress))
+
+        txBuilder.set_fee(CSL.BigNum.from_str('900000'))
+        //txBuilder.add_change_if_needed(CSL.Address.from_bech32(changeAddress))
 
         const txBody = txBuilder.build()
             , redeemers = CSL.Redeemers.new()
